@@ -1,6 +1,5 @@
-import requests, uuid, json, os, datetime, xxhash, time, random
-from utils import get_database_connection, db_setup
-from typing import Literal
+import requests, uuid, json, os, datetime, xxhash, time, random, argparse
+import utils # local
 from typing import Literal
 
 # GLOBALS
@@ -437,28 +436,36 @@ def store_results(results, table, conn):
             print(f"Error storing results for {result['listing_id']} ({result}) \n\n {query}")
 
 
-def main():
+def cli():
     global CONNECTION
-    CONNECTION = get_database_connection(
+    CONNECTION = utils.get_database_connection(
         db_name="funda", 
         db_user=os.environ.get("USER"), 
         db_password=os.environ.get("PASSWORD"),
         db_host=os.environ.get("HOST")
     )
 
-    db_setup("funda", funda_schema, CONNECTION)
+    utils.db_setup("funda", funda_schema, CONNECTION)
 
-    search_query = {
-        "postal_code4": "1063",
-        "km_radius": 10
-    }
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--postal_code", type=int, required=True)
+    parser.add_argument("--km_radius", type=int, required=True)
+    parser.add_argument("--publication_date", type=str, default="now-30d")
+
+    args = parser.parse_args()
+
+    print(f"Running with args: {args.__dict__}")
 
     results_processed = 0
     results_total = 1
     page_size = 100
     while results_processed < results_total:
-        res = get_results(postal_code4=search_query["postal_code4"], km_radius=search_query["km_radius"], start_index=results_processed, page_size=page_size)
-        results_total = res["search_result"]["hits"]["total"]["value"]
+        res = get_results(postal_code4=args.postal_code, km_radius=args.km_radius, publication_date=args.publication_date, start_index=results_processed, page_size=page_size)
+        try:
+            results_total = res["search_result"]["hits"]["total"]["value"]
+        except:
+            raise Exception(f"Failed to get results from funda. Got: {res}")
 
         if results_total == 0:
             print("No results returned.")
@@ -468,7 +475,7 @@ def main():
         
         parsed_results = [{
             **x,
-            "search_query": "~~".join([str(x) for x in search_query.values()])
+            "search_query": f"{args.postal_code}~{args.km_radius}~{args.publication_date}"
             } for x in parse_funda_results(res) if x]
 
         store_results(parsed_results, "funda", CONNECTION)
@@ -476,6 +483,3 @@ def main():
         results_processed += 100
 
         time.sleep(5)
-
-
-main()
