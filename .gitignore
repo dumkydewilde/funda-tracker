@@ -1,0 +1,10 @@
+__pycache__/
+.envrc
+.venv/
+.vscode/
+.env
+.databricks/
+.user.yml
+logs/
+dbt_packages/
+target/
