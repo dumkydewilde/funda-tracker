@@ -1,0 +1,21 @@
+[project]
+name = "fundatracker"
+version = "0.1.0"
+description = "Fetch all data from Funda for a specific 4-digit postal code in a x-KM radius and store it in a Postgres database."
+readme = "README.md"
+authors = [
+    { name = "Dumky", email = "github@dumky.net" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg2-binary==2.9.7",
+    "requests==2.31.0",
+    "xxhash==3.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+fundatracker = "fundatracker.funda:cli"

@@ -19,6 +19,7 @@ COPY . .
 RUN pip install -r requirements.txt --no-cache-dir 
 
 ENV POSTAL_CODES="1063 3511 2511 5613 6512 6221 8025"
+ENV PUBLICATION_DATE="now-1d"
 
 # Define the command to run the application
-CMD ["sh", "-c", "for postal_code in $POSTAL_CODES; do python fundatracker --postal_code $postal_code --km_radius 10 --publication_date='now-1d'; done"]
+CMD ["sh", "-c", "for postal_code in $POSTAL_CODES; do python fundatracker --postal_code $postal_code --km_radius 10 --publication_date='$PUBLICATION_DATE'; done"]

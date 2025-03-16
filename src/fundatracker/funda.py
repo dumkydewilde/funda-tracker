@@ -1,5 +1,5 @@
 import requests, uuid, json, os, datetime, xxhash, time, random, argparse
-import utils # local
+from . import utils
 from typing import Literal
 
 # GLOBALS
@@ -437,6 +437,7 @@ def store_results(results, table, conn):
 
 
 def cli():
+    print("Connecting to database...")
     global CONNECTION
     CONNECTION = utils.get_database_connection(
         db_name="funda", 
