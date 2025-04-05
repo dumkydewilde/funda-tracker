@@ -26,7 +26,8 @@ run_id = str(uuid.uuid4())
 CONNECTION = None
 neighbourhood_insights = {}
 
-funda_schema = {
+def get_funda_schema():
+    return {
         "id": "VARCHAR(100) PRIMARY KEY",
         "agent_id": "VARCHAR(100)",
         "agent_url": "VARCHAR(500)",
