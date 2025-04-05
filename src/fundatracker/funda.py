@@ -1,6 +1,10 @@
-import requests, uuid, json, os, datetime, xxhash, time, random, argparse
+import requests, uuid, json, os, datetime, xxhash, time, random, argparse, logging
 from . import utils
 from typing import Literal
+
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # GLOBALS
 user_agent = [
@@ -301,7 +305,7 @@ def get_listing_insights(listing_id):
         # No insights available
         return {}
     else:
-        print(f"Failed to get listing insights for {listing_id}. Status code: {res.status_code}. Response: {res.text}")
+        logging.error(f"Failed to get listing insights for {listing_id}. Status code: {res.status_code}. Response: {res.text}")
         return {}
     
 def get_neighbourhood_insights(city, neighbourhood):
@@ -326,16 +330,16 @@ def get_neighbourhood_insights(city, neighbourhood):
         # No insights available
         return {}
     else:
-        print(f"Failed to get listing insights for {city} - {neighbourhood}. Status code: {res.status_code}. Response: {res.text}")
+        logging.error(f"Failed to get listing insights for {city} - {neighbourhood}. Status code: {res.status_code}. Response: {res.text}")
         return {}
 
-def parse_funda_results(results_object):
+def parse_funda_results(results_object, use_listing_insights=True):
     try:
         listings = results_object["search_result"]["hits"]["hits"]
     except Exception as e:
         raise Exception(f"Failed to parse results. Error: {e} — Got: {results_object}")
     
-    print(f"Parsing {len(listings)} listings...")
+    logging.debug(f"Parsing {len(listings)} listings...")
     parsed_results = []
     for listing in listings:
         try:
@@ -396,13 +400,13 @@ def parse_funda_results(results_object):
             listing_parsed["neighbourhood_avg_askingprice_m2"] = neightbourhood_insights.get("averageAskingPricePerM2", None)
             listing_parsed["neighbourhood_families_with_children_pct"] = neightbourhood_insights.get("familiesWithChildren", None)
 
-            try:
-                listing_insights = get_listing_insights(listing_parsed["listing_id"])
-                listing_parsed["listing_nr_of_views"] = listing_insights["nrOfViews"]
-                listing_parsed["listing_nr_of_saves"] = listing_insights["nrOfSaves"]
-            except:
-                pass
-
+            if use_listing_insights:
+                try:
+                    listing_insights = get_listing_insights(listing_parsed["listing_id"])
+                    listing_parsed["listing_nr_of_views"] = listing_insights["nrOfViews"]
+                    listing_parsed["listing_nr_of_saves"] = listing_insights["nrOfSaves"]
+                except:
+                    pass
             
             parsed_results.append(listing_parsed)
         except Exception as e:
@@ -413,7 +417,7 @@ def parse_funda_results(results_object):
 
 def store_results(results, table, conn):
     cursor = conn.cursor()
-    print(f"Storing {len(results)} results...")
+    logging.debug(f"Storing {len(results)} results...")
     for result in results:
         try:
             data = {
@@ -432,12 +436,39 @@ def store_results(results, table, conn):
             cursor.execute(query, tuple(data.values()))
 
         except Exception as e:
-            print(f"Encountered error: {e}")
-            print(f"Error storing results for {result['listing_id']} ({result}) \n\n {query}")
+            logging.error(f"Error storing results for {result['listing_id']} ({result}) \n\n {query}")
+            logging.error(e)
 
+def tracker(postal_code, km_radius, publication_date, connection, sleep_between_requests_sec=5):
+    results_processed = 0
+    results_total = 1
+    page_size = 100
+    while results_processed < results_total:
+        res = get_results(postal_code4=postal_code, km_radius=km_radius, publication_date=publication_date, start_index=results_processed, page_size=page_size)
+        try:
+            results_total = res["search_result"]["hits"]["total"]["value"]
+        except:
+            raise Exception(f"Failed to get results from funda. Got: {res}")
+
+        if results_total == 0:
+            logging.info("No results returned.")
+            return
+        
+        logging.info(f"Processing results {results_processed}-{results_processed+100}/{results_total}...")
+        
+        parsed_results = [{
+            **x,
+            "search_query": f"{postal_code}~{km_radius}~{publication_date}"
+            } for x in parse_funda_results(res) if x]
+
+        store_results(parsed_results, "funda", connection)
+
+        results_processed += 100
+
+        time.sleep(sleep_between_requests_sec)
 
 def cli():
-    print("Connecting to database...")
+    print("🔌 Connecting to database...")
     global CONNECTION
     CONNECTION = utils.get_database_connection(
         db_name="funda", 
@@ -456,31 +487,7 @@ def cli():
 
     args = parser.parse_args()
 
-    print(f"Running with args: {args.__dict__}")
+    print(f"🏃 Running with args: {args.__dict__}")
 
-    results_processed = 0
-    results_total = 1
-    page_size = 100
-    while results_processed < results_total:
-        res = get_results(postal_code4=args.postal_code, km_radius=args.km_radius, publication_date=args.publication_date, start_index=results_processed, page_size=page_size)
-        try:
-            results_total = res["search_result"]["hits"]["total"]["value"]
-        except:
-            raise Exception(f"Failed to get results from funda. Got: {res}")
-
-        if results_total == 0:
-            print("No results returned.")
-            return
-        
-        print(f"Processing results {results_processed} to {results_processed+100} of {results_total}...")
-        
-        parsed_results = [{
-            **x,
-            "search_query": f"{args.postal_code}~{args.km_radius}~{args.publication_date}"
-            } for x in parse_funda_results(res) if x]
-
-        store_results(parsed_results, "funda", CONNECTION)
-
-        results_processed += 100
-
-        time.sleep(5)
+    tracker(args.postal_code, args.km_radius, args.publication_date, connection=CONNECTION)
+    print("🏁 Finished")
