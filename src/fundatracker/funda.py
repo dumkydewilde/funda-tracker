@@ -467,6 +467,8 @@ def tracker(postal_code, km_radius, publication_date, connection, sleep_between_
         results_processed += 100
 
         time.sleep(sleep_between_requests_sec)
+    
+    return
 
 def cli():
     print("🔌 Connecting to database...")
@@ -478,7 +480,7 @@ def cli():
         db_host=os.environ.get("HOST")
     )
 
-    utils.db_setup("funda", funda_schema, CONNECTION)
+    utils.db_setup("funda", get_funda_schema(), CONNECTION)
 
     parser = argparse.ArgumentParser()
 

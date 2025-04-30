@@ -1,4 +1,4 @@
-import psycopg2
+import psycopg
 
 CONNECTION = None
 
@@ -8,8 +8,8 @@ def get_database_connection(db_name="", db_user="", db_password="", db_host="", 
         return CONNECTION
     else:
         try:
-            CONNECTION = psycopg2.connect(
-                database=db_name,
+            CONNECTION = psycopg.connect(
+                dbname=db_name,
                 user=db_user,
                 password=db_password,
                 host=db_host,
@@ -18,7 +18,7 @@ def get_database_connection(db_name="", db_user="", db_password="", db_host="", 
             CONNECTION.autocommit = True
             return CONNECTION
 
-        except psycopg2.OperationalError as e:
+        except psycopg.OperationalError as e:
             print(f"Encountered error: {e}")
             return None
         
