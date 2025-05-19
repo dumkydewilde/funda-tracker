@@ -9,8 +9,8 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "psycopg[binary]>=3.2.7",
-    "requests==2.32.3",
-    "xxhash==3.2.0",
+    "requests>=2.32.3",
+    "xxhash>=3.2.0",
 ]
 
 [build-system]
