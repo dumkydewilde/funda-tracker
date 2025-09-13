@@ -10,7 +10,7 @@ Among other things this will return:
 - Object type (apartment, house, parking, land, etc.)
 - Energy label
 - Floor area in m2
-- Plot area in m2 
+- Plot area in m2
 - Status (sold, sold_under_reservation, none)
 - Amenities (boiler, bathtub, renewable_energy, etc.)
 - Construction period
@@ -27,3 +27,44 @@ Among other things this will return:
 
 
 NB. This is just a tool for convenience, so treat it as if you were a regular browser of the site.
+
+## Development
+
+### Setup
+```bash
+# Clone the repository
+git clone https://github.com/dumkydewilde/funda-tracker.git
+cd funda-tracker
+
+# Install dependencies with uv
+uv sync --extra dev
+
+# Install pre-commit hooks
+uv run pre-commit install
+```
+
+### Development Commands
+```bash
+# Run tests
+make test
+# or
+uv run pytest
+
+# Run linting and formatting
+make check
+# or
+uv run ruff check . && uv run ruff format .
+
+# Test pre-commit hooks
+make pre-commit-test
+# or
+uv run pre-commit run --all-files
+```
+
+### Pre-commit Hooks
+This project uses pre-commit hooks that will run automatically before each commit:
+- **ruff** - Fast Python linter and formatter
+- **pytest** - Run all tests
+- **General hooks** - Check YAML, remove trailing whitespace, etc.
+
+The hooks ensure code quality and that all tests pass before code is committed.

@@ -1,0 +1,173 @@
+{
+  "took": 7,
+  "responses": [
+    {
+      "took": 7,
+      "timed_out": false,
+      "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+      },
+      "hits": {
+        "total": {
+          "value": 705,
+          "relation": "eq"
+        },
+        "max_score": null,
+        "hits": [
+          {
+            "_index": "search-listings-prod-20250903133449",
+            "_id": "7713997",
+            "_score": null,
+            "_source": {
+              "agent": [
+                {
+                  "logo_type": "new",
+                  "relative_url": "/makelaar/6380-leonie-evers-makelaars/",
+                  "is_primary": true,
+                  "logo_id": 214547831,
+                  "name": "Leonie Evers Makelaars",
+                  "association": "NVM",
+                  "id": 6380
+                }
+              ],
+              "number_of_bedrooms": 4,
+              "address": {
+                "country": "NL",
+                "province": "Noord-Holland",
+                "wijk": "Zuid",
+                "city": "Hilversum",
+                "neighbourhood": "Schrijverskwartier",
+                "identifiers": [
+                  "nl",
+                  "hilversum/straat-hyacintenlaan",
+                  "hilversum",
+                  "gemeente-hilversum",
+                  "provincie-noord-holland",
+                  "hilversum/schrijverskwartier",
+                  "hilversum/wijk-zuid",
+                  "1215bc",
+                  "1215",
+                  "regio-het-gooi-en-vechtstreek"
+                ],
+                "municipality": "Hilversum",
+                "is_bag_address": true,
+                "house_number": "28",
+                "postal_code": "1215BC",
+                "street_name": "Hyacintenlaan"
+              },
+              "plot_area_range": {
+                "gte": 440,
+                "lte": 440
+              },
+              "blikvanger": {
+                "text": "Karakteristiek en sfeervol gezinshuis in gewilde Schrijverskwartier",
+                "enabled": true
+              },
+              "object_type": "house",
+              "energy_label": "F",
+              "floor_area": [
+                153
+              ],
+              "floor_area_range": {
+                "gte": 153,
+                "lte": 153
+              },
+              "type": "single",
+              "construction_type": "resale",
+              "thumbnail_id": [
+                217088323,
+                217088324,
+                217088325,
+                217088326,
+                217088327,
+                217088328,
+                217088329,
+                217088330,
+                217088331,
+                217088332,
+                217088333,
+                217088334,
+                217088335,
+                217088336,
+                217088337,
+                217088339,
+                217088341,
+                217088342,
+                217088340,
+                217088345,
+                217088343,
+                217088344,
+                217088357,
+                217088346,
+                217088347,
+                217088348,
+                217088350,
+                217088349,
+                217088351,
+                217088352,
+                217088353,
+                217088355,
+                217088354,
+                217088356,
+                217088358,
+                217088359,
+                217088360,
+                217088361,
+                217088362,
+                217088363,
+                217088364,
+                217088365,
+                217088366,
+                217088367,
+                217088368,
+                217088369,
+                217088371,
+                217088372,
+                217088370,
+                217088373
+              ],
+              "offering_type": [
+                "buy"
+              ],
+              "price": {
+                "selling_price": [
+                  850000
+                ],
+                "selling_price_range": {
+                  "gte": 850000,
+                  "lte": 850000
+                },
+                "selling_price_type": "regular",
+                "selling_price_condition": "kosten_koper"
+              },
+              "zoning": "residential",
+              "plot_area": [
+                440
+              ],
+              "id": 7713997,
+              "available_media_types": [
+                "floor_plan",
+                "photo_360",
+                "video"
+              ],
+              "publish_date": "2025-09-12T18:45:50.3300000+02:00",
+              "object_detail_page_relative_url": "/detail/koop/hilversum/huis-hyacintenlaan-28/43168350/",
+              "status": "none",
+              "number_of_rooms": 5
+            },
+            "sort": [
+              "basis",
+              59000,
+              7713997
+            ]
+          }
+
+        ]
+      },
+      "status": 200
+    }
+  ]
+}
