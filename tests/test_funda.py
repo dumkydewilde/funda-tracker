@@ -4,12 +4,10 @@ import unittest
 from unittest.mock import Mock, patch
 
 from fundatracker import funda
-
 from tests.fixtures import (
     EMPTY_RESPONSE,
     MINIMAL_RESPONSE,
-    SAMPLE_NEW_RESPONSE,
-    SAMPLE_OLD_RESPONSE,
+    SAMPLE_RESPONSE,
 )
 
 # Add the src directory to the path to import our module
@@ -19,11 +17,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 class TestFundaFunctions(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures before each test method."""
-        # Test data is now imported from fixtures.py
-        self.sample_old_response = SAMPLE_OLD_RESPONSE
-        self.sample_new_response = SAMPLE_NEW_RESPONSE
+
+        self.sample_response = SAMPLE_RESPONSE
         self.minimal_response = MINIMAL_RESPONSE
         self.empty_response = EMPTY_RESPONSE
+
+        funda.get_listing_insights.cache_clear()
 
     def test_get_funda_schema(self):
         """Test that get_funda_schema returns expected schema structure."""
@@ -55,16 +54,14 @@ class TestFundaFunctions(unittest.TestCase):
         self.assertEqual(schema["price"], "INTEGER")
 
     @patch("fundatracker.funda.requests.post")
-    @patch("fundatracker.funda.random.choice")
-    def test_get_results_success(self, mock_choice, mock_post):
+    @patch("fundatracker.funda.USER_AGENT", "Mozilla/5.0 Test Agent")
+    def test_get_results_success(self, mock_post):
         """Test get_results function with successful response."""
-        # Mock user agent selection
-        mock_choice.return_value = "Mozilla/5.0 Test Agent"
 
         # Mock successful response
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = self.sample_old_response
+        mock_response.json.return_value = self.sample_response
         mock_post.return_value = mock_response
 
         result = funda.get_results(postal_code4=1000, km_radius=5)
@@ -73,14 +70,19 @@ class TestFundaFunctions(unittest.TestCase):
         mock_post.assert_called_once()
 
         # Check the result
-        self.assertEqual(result, self.sample_old_response)
+        self.assertEqual(result, self.sample_response)
 
-        # Check headers were set correctly
+        # Check headers were set correctly for new API
         call_args = mock_post.call_args
         headers = call_args[1]["headers"]
         self.assertIn("User-Agent", headers)
-        self.assertIn("Authorization", headers)
+        self.assertIn("accept", headers)
+        self.assertIn("content-type", headers)
+        self.assertIn("Referer", headers)
         self.assertEqual(headers["User-Agent"], "Mozilla/5.0 Test Agent")
+        self.assertEqual(headers["accept"], "application/x-ndjson")
+        self.assertEqual(headers["content-type"], "application/x-ndjson")
+        self.assertEqual(headers["Referer"], "https://www.funda.nl/")
 
     @patch("fundatracker.funda.requests.post")
     def test_get_results_failure(self, mock_post):
@@ -102,7 +104,7 @@ class TestFundaFunctions(unittest.TestCase):
         """Test get_results function parameter validation and query building."""
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = self.sample_old_response
+        mock_response.json.return_value = self.sample_response
         mock_post.return_value = mock_response
 
         # Test with different parameters
@@ -112,29 +114,39 @@ class TestFundaFunctions(unittest.TestCase):
             publication_date="now-3d",
             offering_type="buy",
             start_index=50,
-            page_size=25,
         )
 
         # Verify the request was made
         mock_post.assert_called_once()
         call_args = mock_post.call_args
-        request_body = call_args[1]["json"]
 
-        # Check that the query structure is correct
-        self.assertIn("query", request_body)
-        self.assertIsInstance(request_body["query"], list)
+        # Check that the request uses NDJSON format (data instead of json)
+        self.assertIn("data", call_args[1])
+        request_body = call_args[1]["data"]
 
-        # Check that search_result query has correct pagination
-        search_result_query = next(
-            (q for q in request_body["query"] if q["id"] == "search_result"), None
-        )
-        self.assertIsNotNone(search_result_query)
-        self.assertEqual(search_result_query["from"], 50)
-        self.assertEqual(search_result_query["size"], 25)
+        # Parse the NDJSON format (two lines)
+        lines = request_body.strip().split("\n")
+        self.assertEqual(len(lines), 2)
+
+        import json
+
+        index_line = json.loads(lines[0])
+        query_line = json.loads(lines[1])
+
+        # Check index specification
+        self.assertEqual(index_line["index"], "listings-wonen-searcher-alias-prod")
+
+        # Check query parameters
+        params = query_line["params"]
+        self.assertEqual(params["radius_search"]["path"], "area_with_radius.15")
+        self.assertEqual(params["radius_search"]["id"], "1000-0")
+        self.assertEqual(params["offering_type"], "buy")
+        self.assertEqual(params["publication_date"], {"3": True})
+        self.assertEqual(params["page"]["from"], 50)
 
     @patch("fundatracker.funda.get_neighbourhood_insights")
-    def test_parse_funda_results_old_format(self, mock_neighbourhood_insights):
-        """Test parse_funda_results with old format data."""
+    def test_parse_funda_results(self, mock_neighbourhood_insights):
+        """Test parse_funda_results with the new API format."""
         # Mock neighbourhood insights
         mock_neighbourhood_insights.return_value = {
             "inhabitants": 50000,
@@ -143,11 +155,33 @@ class TestFundaFunctions(unittest.TestCase):
         }
 
         result = funda.parse_funda_results(
-            self.sample_old_response, use_listing_insights=False
+            self.sample_response, use_listing_insights=False
         )
 
         # Check that we got results
         self.assertEqual(len(result), 1)
+
+        # Check key fields in parsed result
+        parsed_listing = result[0]
+        self.assertEqual(parsed_listing["listing_id"], "6965113")
+        self.assertEqual(parsed_listing["agent_id"], 24581)
+        self.assertEqual(parsed_listing["agent_name"], "Tel Krop Makelaars")
+        self.assertEqual(parsed_listing["address_city"], "Amsterdam")
+        self.assertEqual(parsed_listing["address_neighbourhood"], "Landlust")
+        self.assertEqual(parsed_listing["price"], 375000)
+        self.assertEqual(parsed_listing["number_of_bedrooms"], 2)
+        self.assertEqual(parsed_listing["number_of_rooms"], 3)
+        self.assertEqual(parsed_listing["object_type"], "apartment")
+        self.assertEqual(parsed_listing["energy_label"], "D")
+        self.assertEqual(parsed_listing["floor_area"], 51)
+        self.assertEqual(parsed_listing["plot_area"], 0)
+
+        # Check neighbourhood insights were added
+        self.assertEqual(parsed_listing["neighbourhood_inhabitants"], 50000)
+        self.assertEqual(parsed_listing["neighbourhood_avg_askingprice_m2"], 8500)
+        self.assertEqual(
+            parsed_listing["neighbourhood_families_with_children_pct"], 0.35
+        )
 
         # Check key fields in parsed result
         parsed_listing = result[0]
@@ -284,7 +318,7 @@ class TestFundaFunctions(unittest.TestCase):
         mock_listing_insights.return_value = {"nrOfViews": 100, "nrOfSaves": 20}
 
         result = funda.parse_funda_results(
-            self.sample_old_response, use_listing_insights=True
+            self.sample_response, use_listing_insights=True
         )
 
         # Check that listing insights were fetched and added
@@ -310,7 +344,7 @@ class TestFundaFunctions(unittest.TestCase):
         mock_insights.return_value = {}
 
         result = funda.parse_funda_results(
-            self.sample_old_response, use_listing_insights=False
+            self.sample_response, use_listing_insights=False
         )
         parsed = result[0]
 

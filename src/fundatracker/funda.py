@@ -1,8 +1,9 @@
 import datetime
+import json
 import logging
-import random
 import time
 import uuid
+from functools import lru_cache
 from typing import Literal
 
 import requests
@@ -12,24 +13,15 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# GLOBALS
-user_agent = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.1234.47 Safari/537.36 Edg/103.0.1264.37",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Linux; Android 12; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Mobile Safari/537.36",
-]
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
 
 run_id = str(uuid.uuid4())
 neighbourhood_insights = {}
+
+
+def get_authorization_key():
+    # Funda seems to use a basic auth key (base64 encoded) for all anonymous requests
+    return "Basic ZjVhMjQyZGIxZmUwOjM5ZDYxMjI3LWQ1YTgtNDIxMi04NDY4LWU1NWQ0MjhjMmM2Zg=="
 
 
 def get_funda_schema():
@@ -92,193 +84,80 @@ def get_funda_schema():
     }
 
 
-def get_authorization_key():
-    # Funda seems to use a basic auth key (base64 encoded) for all anonymous requests
-    return "Basic ZjVhMjQyZGIxZmUwOjM5ZDYxMjI3LWQ1YTgtNDIxMi04NDY4LWU1NWQ0MjhjMmM2Zg=="
-
-
 def get_results(
     postal_code4: Literal[1000, 9999],
     km_radius: Literal[1, 2, 5, 10, 15, 30, 50, 100, None] = 1,
     publication_date: Literal[
         "now-1d", "now-3d", "now-5d", "now-10d", "now-30d", "no_preference"
     ] = "no_preference",
-    offering_type: Literal["buy", "rent", "all"] = "all",
+    offering_type: Literal["buy", "rent"] = "buy",
     start_index: int = 0,
     page_size: int = 100,
 ):
-    base_url = "https://listing-search-wonen-arc.funda.io/listings-wonen-searcher-alias-prod/_reactivesearch?preference=_local&filter_path=-responses.aggregations.results.grid.buckets.global_ids.hits.hits._source%2C-responses._shards%2C-responses.aggregations.results.doc_count%2C-responses.**._index%2C-responses.**._score%2C-responses.**.doc_count_error_upper_bound%2C-responses.**.sum_other_doc_count%2C-responses.**._source.address.identifiers"
-    query = {
-        "settings": {
-            "recordAnalytics": False,
-            "enableQueryRules": True,
-            "emptyQuery": True,
-            "suggestionAnalytics": False,
-            "queryParams": {
-                "preference": "_local",
-                "filter_path": "-responses.aggregations.results.grid.buckets.global_ids.hits.hits._source,-responses._shards,-responses.aggregations.results.doc_count,-responses.**._index,-responses.**._score,-responses.**.doc_count_error_upper_bound,-responses.**.sum_other_doc_count,-responses.**._source.address.identifiers",
-            },
-        },
-        "query": [
-            {
-                "id": "search_result",
-                "type": "search",
-                "dataField": ["availability"],
-                "execute": True,
-                "react": {
-                    "and": [
-                        "selected_area",
-                        "offering_type",
-                        "sort",
-                        "price",
-                        "floor_area",
-                        "plot_area",
-                        "bedrooms",
-                        "rooms",
-                        "exterior_space_garden_size",
-                        "garage_capacity",
-                        "publication_date",
-                        "object_type",
-                        "availability",
-                        "construction_type",
-                        "construction_period",
-                        "surrounding",
-                        "garage_type",
-                        "exterior_space_type",
-                        "exterior_space_garden_orientation",
-                        "energy_label",
-                        "zoning",
-                        "amenities",
-                        "type",
-                        "nvm_open_house_day",
-                        "free_text_search",
-                        "agent_id",
-                        "map_results",
-                        "object_type",
-                        "object_type_house_orientation",
-                        "object_type_house",
-                        "object_type_apartment_orientation",
-                        "object_type_apartment",
-                        "object_type_parking",
-                        "object_type_parking_capacity",
-                        "search_result__internal",
-                    ]
-                },
-                "size": page_size,
-                "from": start_index,
-                "defaultQuery": {
-                    "track_total_hits": True,
-                    "timeout": "3s",
-                    "sort": [
-                        {"publish_date": "desc"},
-                        {"placement_type": "asc"},
-                        {"relevancy_sort_order": "desc"},
-                        {"id.number": "desc"},
-                    ],
-                    "_source": {
-                        "includes": [
-                            "availability",
-                            "address",
-                            "agent",
-                            "available_media_types",
-                            "placement_type",
-                            "construction_date_range",
-                            "energy_label",
-                            "floor_area",
-                            "floor_area_range",
-                            "handover_date_range",
-                            "id",
-                            "name",
-                            "number_of_bedrooms",
-                            "number_of_rooms",
-                            "object_detail_page_relative_url",
-                            "offering_type",
-                            "open_house_datetime_slot",
-                            "plot_area",
-                            "plot_area_range",
-                            "price",
-                            "project",
-                            "publish_date",
-                            "sale_date_range",
-                            "status",
-                            "type",
-                            "object_type",
-                            "selected_area",
-                            "description",
-                            "exterior_space_garden_size",
-                            "garage_capacity",
-                            "garage_type",
-                            "availability",
-                            "construction_type",
-                            "construction_period",
-                            "surrounding",
-                            "exterior_space_type",
-                            "exterior_space_garden_orientation",
-                            "zoning",
-                            "amenities",
-                            "map_results",
-                            "object_type_house_orientation",
-                            "object_type_house",
-                            "object_type_apartment_orientation",
-                            "object_type_apartment",
-                            "object_type_parking",
-                            "object_type_parking_capacity",
-                        ]
-                    },
-                },
-            },
-            {
-                "id": "selected_area",
-                "type": "term",
-                "dataField": ["reactive_component_field"],
-                "execute": True,
-                "customQuery": {
-                    "id": "location-radius-query-v2",
-                    "params": {
-                        "searchField": "location",
-                        "geoIndex": "geo-wonen-alias-prod",
-                        "locationIdentifier": f"{postal_code4}-0",
-                        "radiusField": f"area_with_radius.{km_radius}",
-                    },
-                },
-            },
-        ],
+    """
+    Get property listings from Funda API using the new endpoint format.
+
+    Args:
+        postal_code4: 4-digit postal code for location search
+        km_radius: Search radius in kilometers
+        publication_date: Filter by publication date
+        offering_type: Type of offering (buy/rent/all)
+        start_index: Starting index for pagination
+        page_size: Number of results per page
+
+    Returns:
+        dict: API response containing property listings
+    """
+    base_url = "https://listing-search-wonen.funda.io/_msearch/template"
+
+    # Map publication_date to new format
+    publication_date_map = {
+        "now-1d": {"1": True},
+        "now-3d": {"3": True},
+        "now-5d": {"5": True},
+        "now-10d": {"10": True},
+        "now-30d": {"30": True},
+        "no_preference": {},
     }
 
-    if publication_date != "no_preference":
-        # One of now-1d, now-3d, now-5d, now-10d, now-30d, no_preference
-        query["query"].append(
-            {
-                "id": "publication_date",
-                "type": "term",
-                "dataField": ["publish_date_utc"],
-                "execute": False,
-                "customQuery": {
-                    "id": "publish-date-query-v2",
-                    "params": {"date_to": "now", "date_from": publication_date},
-                },
-            }
-        )
+    # Build query parameters for new API format
+    query_params = {
+        "collapse_projects": False,
+        "radius_search": {
+            "index": "geo-wonen-alias-prod",
+            "id": f"{postal_code4}-0",
+            "path": f"area_with_radius.{km_radius}"
+            if km_radius
+            else "area_with_radius.1",
+        },
+        "offering_type": offering_type,
+        "project_phase": {},
+        "publication_date": publication_date_map.get(publication_date, {}),
+        "availability": ["available", "negotiations", "unavailable"],
+        "free_text_search": "",
+        "page": {"from": start_index},  # Remove size parameter to match sample
+        "zoning": ["residential", "recreational"],
+        "type": ["single", "group"],
+        "sort": {"field": None, "order": None},
+        "open_house": {},
+    }
 
-    if offering_type != "all":
-        # buy or rent
-        query["query"].append(
-            {
-                "id": "offering_type",
-                "type": "term",
-                "dataField": ["offering_type"],
-                "execute": False,
-                "defaultQuery": {"timeout": "500ms"},
-                "value": offering_type,
-            }
-        )
+    # Create NDJSON request body (newline-delimited JSON)
+    index_line = {"index": "listings-wonen-searcher-alias-prod"}
+    query_line = {
+        "id": "search_result_20250808",
+        "params": query_params,
+    }  # Format as NDJSON (each JSON object on a separate line)
+    ndjson_body = json.dumps(index_line) + "\n" + json.dumps(query_line) + "\n"
 
     headers = {
-        "User-Agent": random.choice(user_agent),
-        "Authorization": get_authorization_key(),
+        "accept": "application/x-ndjson",
+        "content-type": "application/x-ndjson",
+        "Referer": "https://www.funda.nl/",
+        "User-Agent": USER_AGENT,
     }
 
-    res = requests.post(base_url, json=query, headers=headers)
+    res = requests.post(base_url, data=ndjson_body, headers=headers)
 
     if res.status_code != 200:
         raise Exception(
@@ -288,11 +167,12 @@ def get_results(
     return res.json()
 
 
+@lru_cache
 def get_listing_insights(listing_id):
     url = f"https://marketinsights.funda.io/v1/objectinsights/{listing_id}"
 
     headers = {
-        "User-Agent": random.choice(user_agent),
+        "User-Agent": USER_AGENT,
         "Authorization": get_authorization_key(),
     }
 
@@ -310,6 +190,7 @@ def get_listing_insights(listing_id):
         return {}
 
 
+@lru_cache(maxsize=2400)
 def get_neighbourhood_insights(city, neighbourhood):
     global neighbourhood_insights
     neighbourhood = neighbourhood.replace("/", "-").replace(" ", "-").replace("--", "-")
@@ -319,7 +200,7 @@ def get_neighbourhood_insights(city, neighbourhood):
 
     url = f"https://marketinsights.funda.io/v2/LocalInsights/preview/{city}/{neighbourhood}"
 
-    headers = {"User-Agent": random.choice(user_agent)}
+    headers = {"User-Agent": USER_AGENT}
 
     res = requests.get(url, headers=headers)
 
@@ -337,8 +218,18 @@ def get_neighbourhood_insights(city, neighbourhood):
 
 
 def parse_funda_results(results_object, use_listing_insights=True):
+    """
+    Parse Funda API results from the new API format.
+
+    Args:
+        results_object: API response object
+        use_listing_insights: Whether to fetch additional listing insights
+
+    Returns:
+        list: Parsed listing data
+    """
     try:
-        listings = results_object["search_result"]["hits"]["hits"]
+        listings = results_object["responses"][0]["hits"]["hits"]
     except Exception as e:
         raise Exception(f"Failed to parse results. Error: {e} — Got: {results_object}")
 
@@ -423,12 +314,12 @@ def parse_funda_results(results_object, use_listing_insights=True):
             listing_parsed["neighbourhood_inhabitants"] = neightbourhood_insights.get(
                 "inhabitants", None
             )
-            listing_parsed[
-                "neighbourhood_avg_askingprice_m2"
-            ] = neightbourhood_insights.get("averageAskingPricePerM2", None)
-            listing_parsed[
-                "neighbourhood_families_with_children_pct"
-            ] = neightbourhood_insights.get("familiesWithChildren", None)
+            listing_parsed["neighbourhood_avg_askingprice_m2"] = (
+                neightbourhood_insights.get("averageAskingPricePerM2", None)
+            )
+            listing_parsed["neighbourhood_families_with_children_pct"] = (
+                neightbourhood_insights.get("familiesWithChildren", None)
+            )
 
             if use_listing_insights:
                 try:
@@ -498,8 +389,11 @@ def tracker(
             start_index=results_processed,
             page_size=page_size,
         )
+
         try:
-            results_total = res["search_result"]["hits"]["total"]["value"]
+            results_total = res["responses"][0]["hits"]["total"]["value"]
+            results_current_length = len(res["responses"][0]["hits"]["hits"])
+
         except Exception as e:
             raise Exception(
                 f"Failed to get results from funda. Got: {res}\n\nError: {e}"
@@ -510,7 +404,7 @@ def tracker(
             return
 
         logging.info(
-            f"Processing results {results_processed}-{results_processed + 100}/{results_total}..."
+            f"Processing results {results_processed}-{results_processed + results_current_length}/{results_total}..."
         )
 
         parsed_results = [
@@ -521,7 +415,7 @@ def tracker(
 
         store_results(parsed_results, "funda", connection)
 
-        results_processed += 100
+        results_processed += results_current_length
 
         time.sleep(sleep_between_requests_sec)
 
