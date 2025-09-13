@@ -1,0 +1,2 @@
+{"index":"listings-wonen-searcher-alias-prod"}
+{"id":"search_result_20250808","params":{"collapse_projects":false,"radius_search":{"index":"geo-wonen-alias-prod","id":"amsterdam-0","path":"area_with_radius.15"},"offering_type":"buy","project_phase":{},"publication_date":{"3":true},"availability":["available","negotiations","unavailable"],"free_text_search":"","page":{"from":15},"zoning":["residential","recreational"],"type":["single","group"],"sort":{"field":null,"order":null},"open_house":{}}}
