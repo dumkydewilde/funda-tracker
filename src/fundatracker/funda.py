@@ -10,10 +10,10 @@ import requests
 import xxhash
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
 
 run_id = str(uuid.uuid4())
 neighbourhood_insights = {}
@@ -145,14 +145,15 @@ def get_results(
     # Create NDJSON request body (newline-delimited JSON)
     index_line = {"index": "listings-wonen-searcher-alias-prod"}
     query_line = {
-        "id": "search_result_20250808",
+        "id": "search_result_20251211",
         "params": query_params,
     }  # Format as NDJSON (each JSON object on a separate line)
     ndjson_body = json.dumps(index_line) + "\n" + json.dumps(query_line) + "\n"
 
     headers = {
-        "accept": "application/x-ndjson",
-        "content-type": "application/x-ndjson",
+        "accept": "application/json",
+        "content-type": "application/json",
+        "cache-control" : "no-cache",
         "Referer": "https://www.funda.nl/",
         "User-Agent": USER_AGENT,
     }
