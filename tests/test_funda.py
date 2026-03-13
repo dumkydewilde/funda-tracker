@@ -80,8 +80,8 @@ class TestFundaFunctions(unittest.TestCase):
         self.assertIn("content-type", headers)
         self.assertIn("Referer", headers)
         self.assertEqual(headers["User-Agent"], "Mozilla/5.0 Test Agent")
-        self.assertEqual(headers["accept"], "application/x-ndjson")
-        self.assertEqual(headers["content-type"], "application/x-ndjson")
+        self.assertEqual(headers["accept"], "application/json")
+        self.assertEqual(headers["content-type"], "application/json")
         self.assertEqual(headers["Referer"], "https://www.funda.nl/")
 
     @patch("fundatracker.funda.requests.post")
