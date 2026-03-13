@@ -6,8 +6,8 @@ import uuid
 from functools import lru_cache
 from typing import Literal
 
-import requests
 import xxhash
+from curl_cffi import requests
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -158,7 +158,7 @@ def get_results(
         "User-Agent": USER_AGENT,
     }
 
-    res = requests.post(base_url, data=ndjson_body, headers=headers)
+    res = requests.post(base_url, data=ndjson_body, headers=headers, impersonate="chrome")
 
     if res.status_code != 200:
         raise Exception(
@@ -177,7 +177,7 @@ def get_listing_insights(listing_id):
         "Authorization": get_authorization_key(),
     }
 
-    res = requests.get(url, headers=headers)
+    res = requests.get(url, headers=headers, impersonate="chrome")
 
     if res.status_code == 200:
         return res.json()
@@ -203,7 +203,7 @@ def get_neighbourhood_insights(city, neighbourhood):
 
     headers = {"User-Agent": USER_AGENT}
 
-    res = requests.get(url, headers=headers)
+    res = requests.get(url, headers=headers, impersonate="chrome")
 
     if res.status_code == 200:
         neighbourhood_insights[neighbourhood_key] = res.json()
