@@ -379,10 +379,11 @@ def store_results(results, table, conn):
 def tracker(
     postal_code, km_radius, publication_date, connection, sleep_between_requests_sec=5
 ):
+    ES_MAX_RESULT_WINDOW = 10000
     results_processed = 0
     results_total = 1
     page_size = 100
-    while results_processed < results_total:
+    while results_processed < results_total and results_processed + page_size <= ES_MAX_RESULT_WINDOW:
         res = get_results(
             postal_code4=postal_code,
             km_radius=km_radius,
@@ -419,5 +420,12 @@ def tracker(
         results_processed += results_current_length
 
         time.sleep(sleep_between_requests_sec)
+
+    if results_processed >= ES_MAX_RESULT_WINDOW and results_processed < results_total:
+        logging.warning(
+            f"Reached Elasticsearch max result window ({ES_MAX_RESULT_WINDOW}). "
+            f"Processed {results_processed}/{results_total} results for postal code {postal_code}. "
+            f"Consider using a smaller radius or more restrictive date filter."
+        )
 
     return
